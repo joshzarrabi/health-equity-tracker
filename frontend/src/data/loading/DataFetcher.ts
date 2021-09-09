@@ -92,7 +92,8 @@ export class ApiDataFetcher implements DataFetcher {
     // integers
     if (
       datasetId.startsWith("acs_population") ||
-      datasetId.startsWith("acs_2010_population")
+      datasetId.startsWith("acs_2010_population") ||
+      datasetId.startsWith("merged")
     ) {
       result = result.map((row: any) => {
         return { ...row, population: Number(row["population"]) };

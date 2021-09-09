@@ -4,13 +4,18 @@ import { Breakdowns } from "../query/Breakdowns";
 import { MetricQuery, MetricQueryResponse } from "../query/MetricQuery";
 import { joinOnCols } from "../utils/datasetutils";
 import AcsPopulationProvider from "./AcsPopulationProvider";
+import MergedPopulationProvider from "./MergedPopulationProvider";
 import VariableProvider from "./VariableProvider";
 import { ALL } from "../utils/Constants";
 
 class VaccineProvider extends VariableProvider {
   private acsProvider: AcsPopulationProvider;
+  private mergedProvider: MergedPopulationProvider;
 
-  constructor(acsProvider: AcsPopulationProvider) {
+  constructor(
+    acsProvider: AcsPopulationProvider,
+    mergedProvider: MergedPopulationProvider
+  ) {
     super("vaccine_provider", [
       "vaccinated_pct_share",
       "vaccinated_share_of_known",
@@ -18,6 +23,7 @@ class VaccineProvider extends VariableProvider {
       "vaccine_population_pct",
     ]);
     this.acsProvider = acsProvider;
+    this.mergedProvider = mergedProvider;
   }
 
   getDatasetId(breakdowns: Breakdowns): string {
@@ -60,8 +66,8 @@ class VaccineProvider extends VariableProvider {
 
     let consumedDatasetIds = [datasetId];
 
-    if (breakdowns.geography === "national" && breakdownColumnName !== "age") {
-      const acsQueryResponse = await this.acsProvider.getData(
+    if (breakdowns.geography === "national") {
+      const acsQueryResponse = await this.mergedProvider.getData(
         new MetricQuery(["population", "population_pct"], acsBreakdowns)
       );
 
@@ -70,6 +76,8 @@ class VaccineProvider extends VariableProvider {
       );
 
       const acs = new DataFrame(acsQueryResponse.data);
+      console.log(acs.toArray());
+
       df = joinOnCols(df, acs, ["fips", breakdownColumnName], "left");
 
       df = df.renameSeries({
@@ -98,13 +106,6 @@ class VaccineProvider extends VariableProvider {
           breakdownColumnName
         );
       }
-    } else if (
-      breakdowns.geography === "national" &&
-      breakdownColumnName === "age"
-    ) {
-      const acsQueryResponse = await this.acsProvider.getData(
-        new MetricQuery(["population"], acsBreakdowns)
-      );
     } else if (breakdowns.geography === "state") {
       const acsQueryResponse = await this.acsProvider.getData(
         new MetricQuery(["population_pct"], acsBreakdowns)

@@ -127,6 +127,8 @@ class CdcCovidProvider extends VariableProvider {
             .resetIndex()
         : df;
 
+    console.log(df.toArray());
+
     // Get island pop data if it exists
     const islandFips = df.getSeries("fips").toArray()[0];
     if (
