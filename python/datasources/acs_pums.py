@@ -23,7 +23,7 @@ RACE_IDENTIFIERS = {
 }
 
 
-AGE_RANGES = ["0:9", "10:19", "20:29", "30:39", "45:54", "55:64", "65:74", "75:84", "85:120"]
+AGE_RANGES = ["0:9", "10:19", "20:29", "30:34", "35:44", "45:54", "55:64", "65:74", "75:84", "85:120"]
 
 BASE_ACS_URL = "https://api.census.gov/data/2019/acs/acs5/pums"
 
@@ -119,7 +119,7 @@ def compare_to_estimate():
         estimate_df_age = estimate_df.loc[estimate_df['age'] == age_range]
         df_age = df.loc[df['age'] == age_range]
 
-        for race in RACE_IDENTIFIERS.keys() + [Race.HISP.value]:
+        for race in RACE_IDENTIFIERS:
             differences = {}
 
             if len(estimate_df_age.loc[estimate_df_age['race_category_id'] == race]) > 0:
