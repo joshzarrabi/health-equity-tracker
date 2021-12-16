@@ -29,22 +29,12 @@ AGE_RANGES = ["0:9", "10:19", "20:29", "30:34", "35:44", "45:54", "55:64", "65:7
 BASE_ACS_URL = "https://api.census.gov/data/2019/acs/acs5/pums"
 
 
-def get_all_state_ucgids():
-    s = ""
-    for fips_code in ALL_STATE_FIPS[:2]:
-        s += fips_to_ucgid(fips_code) + ","
-    return s[:-1]
-
-
-def fips_to_ucgid(fips_code):
-    return f'0400000US{fips_code:02d}'
-
-
 def get_state_population_data():
     dfs = {}
 
     for age_range in AGE_RANGES:
-        jsn = requests.get(generate_url(age_range))
+        url = generate_url(age_range)
+        jsn = requests.get(url)
         jsn = json.loads(jsn.content)
 
         jsn[0] = [str(item) for item in jsn[0]]
@@ -54,8 +44,8 @@ def get_state_population_data():
 
 
 def generate_url(age_range):
-    return "%s?tabulate=weight(PWGTP)&col+RAC1P&row+HISP&row+ucgid&ucgid=%s&AGEP=%s" % (
-            BASE_ACS_URL, get_all_state_ucgids(), age_range)
+    return "%s?tabulate=weight(PWGTP)&col+RAC1P&row+HISP&row+for&for=state:*&AGEP=%s" % (
+            BASE_ACS_URL, age_range)
 
 
 def get_race_keys(races):
@@ -72,7 +62,7 @@ def get_non_hispanic_population_for_race(df, race, state_fips):
 
     df = df.loc[
             (df["HISP"] == NOT_HISPANIC_IDENTIFIER) &
-            (df["ucgid"] == fips_to_ucgid(state_fips))].reset_index(drop=True)
+            (df["state"] == state_fips)].reset_index(drop=True)
 
     return int(df[keys].sum(axis=1))
 
@@ -80,7 +70,7 @@ def get_non_hispanic_population_for_race(df, race, state_fips):
 def get_total_population_for_race(df, race, state_fips):
     keys = get_race_keys([race])
 
-    df = df.loc[df['ucgid'] == fips_to_ucgid(state_fips)].reset_index(drop=True)
+    df = df.loc[df['state'] == state_fips].reset_index(drop=True)
     return int(df[keys].sum().sum())
 
 
@@ -88,7 +78,7 @@ def get_hispanic_population(df, state_fips):
     all_race_keys = get_race_keys(RACE_IDENTIFIERS.keys())
 
     df = df.loc[(df["HISP"] != NOT_HISPANIC_IDENTIFIER)
-                & (df['ucgid'] == fips_to_ucgid(state_fips))].reset_index(drop=True)
+                & (df['state'] == state_fips)].reset_index(drop=True)
     return int(df[all_race_keys].sum().sum())
 
 
@@ -102,8 +92,9 @@ def get_all_population_data():
     populations_by_age = []
     dfs = get_state_population_data()
 
-    for state_fips in ALL_STATE_FIPS[:2]:
-        for ages, df in dfs.items():
+    for ages, df in dfs.items():
+        states = df['state'].drop_duplicates().to_list()
+        for state_fips in states:
             for race in RACE_IDENTIFIERS:
                 if "NH" in race:
                     populations = {}
@@ -129,42 +120,53 @@ def get_all_population_data():
 
             populations_by_age.append(populations)
 
-    return pd.DataFrame(populations_by_age)
+    to_return = pd.DataFrame(populations_by_age)
+    to_return.to_json('pums.json', orient='records')
+    return to_return
 
 
 def compare_to_estimate():
-    estimate_df = pd.read_json("all-states.json")
+    estimate_df = pd.read_json("all-states.json", dtype={'state_fips': str})
     df = get_all_population_data()
 
     all_differences = []
     for ages in AGE_RANGES:
         age_range = translate_age(ages)
 
-        estimate_df_age = estimate_df.loc[estimate_df['age'] == age_range]
-        df_age = df.loc[df['age'] == age_range]
-
-        print(df_age.columns)
+        estimate_df_age = estimate_df.loc[estimate_df['age'] == age_range].reset_index(drop=True)
+        df_age = df.loc[df['age'] == age_range].reset_index(drop=True)
 
         all_races = list(RACE_IDENTIFIERS.keys())
         all_races.append(Race.HISP.value)
 
         states = estimate_df['state_fips'].drop_duplicates().to_list()
+        states.remove('72')
         for state_fips in states:
             for race in all_races:
+                print(race)
                 differences = {}
 
                 if len(estimate_df_age.loc[estimate_df_age['race_category_id'] == race]) > 0:
 
-                    est = int(estimate_df_age.loc[estimate_df_age['race_category_id'] == race]['population'].values[0])
+                    est = int(estimate_df_age.loc[(estimate_df_age['race_category_id'] == race)
+                                                  & (estimate_df_age['state_fips'] == state_fips)]['population'].values[0])
                     pums_val = int(
-                            df_age.loc[df_age['race'] == race
-                                       & df_age["ucgid"] == fips_to_ucgid(int(state_fips))
+                            df_age.loc[(df_age['race'] == race)
+                                       & (df_age["state_fips"] == state_fips)
                                        ]['population'].values[0])
 
                     differences['state_fips'] = state_fips
                     differences['race'] = race
                     differences['age'] = age_range
+                    differences['microdata_pop'] = pums_val
+                    differences['estimate_pop'] = est
+                    if est == 0:
+                        continue
                     differences['diff'] = float(pums_val) / float(est)
                     all_differences.append(differences)
 
     return pd.DataFrame(all_differences)
+
+
+def write_it():
+    compare_to_estimate().sort_values(by=['state_fips', 'age']).to_csv("differences.csv", index=False)
