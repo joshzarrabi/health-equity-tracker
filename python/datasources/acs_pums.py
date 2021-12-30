@@ -149,7 +149,9 @@ def compare_to_estimate():
                 if len(estimate_df_age.loc[estimate_df_age['race_category_id'] == race]) > 0:
 
                     est = int(estimate_df_age.loc[(estimate_df_age['race_category_id'] == race)
-                                                  & (estimate_df_age['state_fips'] == state_fips)]['population'].values[0])
+                                                  & (estimate_df_age['state_fips'] == state_fips)]
+                              ['population'].values[0])
+
                     pums_val = int(
                             df_age.loc[(df_age['race'] == race)
                                        & (df_age["state_fips"] == state_fips)
