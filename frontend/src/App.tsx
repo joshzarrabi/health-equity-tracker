@@ -44,6 +44,7 @@ import { HelmetProvider } from "react-helmet-async";
 // the following components make CSS modules which are imported by other components, so they must load first
 import AboutUsPage from "./pages/AboutUs/AboutUsPage";
 import WhatIsHealthEquityPage from "./pages/WhatIsHealthEquity/WhatIsHealthEquityPage";
+import { Box, CircularProgress } from "@material-ui/core";
 
 const ExploreDataPage = React.lazy(
   () => import("./pages/ExploreData/ExploreDataPage")
@@ -173,12 +174,11 @@ function App() {
           <CssBaseline />
           <div className={styles.App}>
             <div className={styles.Content}>
+              <a className={styles.SkipMainLink} href="#main">
+                Skip to main content
+              </a>
               <Router>
-                <Suspense fallback={<i></i>}>
-                  <a className={styles.SkipMainLink} href="#main">
-                    Skip to main content
-                  </a>
-                  <ScrollToTop />
+                <header>
                   <AppBar position="static" elevation={0}>
                     {width > MOBILE_BREAKPOINT ? (
                       <AppToolbar />
@@ -186,6 +186,17 @@ function App() {
                       <MobileAppToolbar />
                     )}
                   </AppBar>
+                </header>
+                <ScrollToTop />
+                <Suspense
+                  fallback={
+                    <div className={styles.FallbackPage}>
+                      <Box mt={10}>
+                        <CircularProgress />
+                      </Box>
+                    </div>
+                  }
+                >
                   <main>
                     <Switch>
                       <Route
