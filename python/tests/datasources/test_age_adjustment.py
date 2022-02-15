@@ -41,11 +41,11 @@ def get_cdc_restricted_by_race_national_as_df():
 
 
 # "Unit" tests
-def testExpectedDeaths():
+def testExpectedDeathsAndHospitalizations():
     covid_data = pd.read_json(COVID_DATA_SIMPLE, dtype={'state_fips': str})
     pop_data = get_census_pop_estimates_as_df()
 
-    df = age_adjust.get_expected_deaths(covid_data, pop_data)
+    df = age_adjust.get_expected_deaths_and_hosps(covid_data, pop_data)
     expected_df = pd.read_json(EXPECTED_DEATHS_JSON, dtype={'state_fips': str})
 
     assert_frame_equal(df, expected_df, check_like=True)
