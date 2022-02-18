@@ -69,9 +69,9 @@ class AgeAdjustCDCRestricted(DataSource):
                 with_race_age_df[std_col.RACE_CATEGORY_ID_COL].isin(AGE_ADJUST_RACES)
             ].reset_index(drop=True)
 
-            df = get_expected_deaths(race_and_age_df, pop_df_death)
+            df = get_expected_deaths(with_race_age_df, pop_df_death)
             df = get_expected_hosps(df, pop_df_hosp)
-            df = 
+            age_adjusted_df = age_adjust_from_expected(df)
 
             only_race = 'by_race_%s' % geo
             table_name = '%s-with_age_adjust' % only_race
